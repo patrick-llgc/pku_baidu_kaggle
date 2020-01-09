@@ -1,9 +1,11 @@
 # pku baidu kaggle dataset api
 
-## Augmented test images
-Out of the test images some are flipped. These are annotated and saved to [data folder](data).
+## Additional data
+- car model correspondence is obtained from [ApolloScape dataset](# https://raw.githubusercontent.com/ApolloScapeAuto/dataset-api/master/car_instance/car_models.py)
+- car model pickle files hosted on [Kaggle](https://www.kaggle.com/c/pku-autonomous-driving/data) have issues. The older version of the pickle files can be found at [this issue](https://github.com/ApolloScapeAuto/dataset-api/issues/1). It is saved to `data` folder. The corresponding json files are also added to `data` folder to supplement the ApolloScape dataset. 
+- Out of the test images some are flipped. These are annotated and saved to [data folder](data).
 
-## average size
+## average vehicle size
 ```python
 {'2x': {'W': 1.81794264,
   'H': 1.47786305,
