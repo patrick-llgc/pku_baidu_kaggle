@@ -5,6 +5,8 @@ import pandas as pd
 import json
 import numpy as np
 from matplotlib import pylab as plt
+import argparse
+from tqdm import tqdm
 
 from utils import get_avg_size, draw_obj, euler_to_rot, get_intrinsics
 from car_models import car_id2name
@@ -53,7 +55,9 @@ class Visualizer(object):
         return model_types, yaws, pitches, rolls, xs, ys, zs
 
     def load_image(self, image_name):
-        img = cv2.imread(f'{self.image_dir}/{image_name}{self.ext}',
+        image_path = f'{self.image_dir}/{image_name}{self.ext}'
+        print(image_path)
+        img = cv2.imread(image_path,
                          cv2.COLOR_BGR2RGB)[:, :, ::-1]
         H, W = img.shape[:2]
         print('image size is H={}, W={}'.format(H, W))
@@ -184,12 +188,29 @@ class Visualizer(object):
 
 
 if __name__ == '__main__':
-    basedir = '/Users/pliu/Downloads/pku_kaggle_data/'
-    image_dir = '/Users/pliu/Downloads/pku_kaggle_data/train_images'
-    model_dir = '/Users/pliu/Downloads/pku_kaggle_data/car_models_json'
-    save_dir = '/Users/pliu/Downloads/pku_kaggle_data/vis_anno/'
-    # save_dir = None  # show in terminal or notebook
+    parser = argparse.ArgumentParser(description='Render car instance and convert car labelled files.')
+    parser.add_argument('--image_name', default='ID_005bf2575',
+                        help='image name')
+    parser.add_argument('--base_dir', default='/Users/pliu/Downloads/pku_kaggle_data/',
+                        help='the dir of images')
+    parser.add_argument('--image_dir', default='/Users/pliu/Downloads/pku_kaggle_data/train_images',
+                        help='the dir of images')
+    parser.add_argument('--model_dir', default='/Users/pliu/Downloads/pku_kaggle_data/car_models_json',
+                        help='the dir of car model jsons')
+    parser.add_argument('--save_dir', default='/Users/pliu/Downloads/pku_kaggle_data/vis_anno/',
+                        help='the dir of ground truth')
+    args = parser.parse_args()
+    assert args.image_name
 
-    image_name = 'ID_001d6829a'
-    vis = Visualizer(basedir=basedir, image_dir=image_dir, model_dir=model_dir, save_dir=save_dir)
-    overlay, bboxes = vis.process(image_name=image_name)
+    # args.save_dir = None  # show in terminal or notebook
+
+    visualizer = Visualizer(basedir=args.base_dir, image_dir=args.image_dir,
+                     model_dir=args.model_dir, save_dir=args.save_dir)
+
+    if args.image_name.lower() == 'all':
+        image_name_list = [x[:-4] for x in os.listdir(args.iamge_dir)]
+    else:
+        image_name_list = [args.image_name]
+    for image_name in tqdm(image_name_list):
+        overlay, bboxes = visualizer.process(image_name=image_name)
+
