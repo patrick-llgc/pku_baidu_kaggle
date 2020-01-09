@@ -9,6 +9,29 @@ from math import sin, cos
 from PIL import ImageDraw, Image
 
 
+def get_intrinsics():
+    # This is camera_5 in ApolloScape dataset
+    # Very few images are captured by camera_6
+    k = np.array([[2304.5479, 0, 1686.2379],
+                  [0, 2305.8757, 1354.9849],
+                  [0, 0, 1]], dtype=np.float32)
+    return k
+
+def get_avg_size():
+    avg_dict = {'2x': {'W': 1.81794264,
+                'H': 1.47786305,
+                'L': 4.49547776,
+                'model': 'bieke-yinglang-XT'},
+         'SUV': {'W': 2.10604523,
+                 'H': 1.67994469,
+                 'L': 4.73350861,
+                 'model': 'biyadi-tang'},
+         '3x': {'W': 1.9739563700000002,
+                'H': 1.4896684399999998,
+                'L': 4.83009344,
+                'model': 'dazhongmaiteng'}}
+    return avg_dict
+
 def get_iou(bb1, bb2):
     # determine the coordinates of the intersection rectangle
     x_left = max(bb1['x1'], bb2['x1'])
@@ -147,26 +170,6 @@ def draw_obj(image, vertices, triangles, color=(0,0,255)):
         # image = fill_hole(image)
     return image
 
-def get_intrinsics():
-    k = np.array([[2304.5479, 0, 1686.2379],
-                  [0, 2305.8757, 1354.9849],
-                  [0, 0, 1]], dtype=np.float32)
-    return k
-
-def get_avg_size():
-    avg_dict = {'2x': {'W': 1.81794264,
-                'H': 1.47786305,
-                'L': 4.49547776,
-                'model': 'bieke-yinglang-XT'},
-         'SUV': {'W': 2.10604523,
-                 'H': 1.67994469,
-                 'L': 4.73350861,
-                 'model': 'biyadi-tang'},
-         '3x': {'W': 1.9739563700000002,
-                'H': 1.4896684399999998,
-                'L': 4.83009344,
-                'model': 'dazhongmaiteng'}}
-    return avg_dict
 
 if __name__ == '__main__':
 
