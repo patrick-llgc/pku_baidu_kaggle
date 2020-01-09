@@ -112,14 +112,12 @@ class Visualizer(object):
 
         yaw, pitch, roll, x, y, z = [float(x) for x in [yaw, pitch, roll, x, y, z]]
         # note the order change
-        roll, pitch, yaw = pitch, yaw, roll
         Rt = np.eye(4)
         t = np.array([x, y, z])
         Rt[:3, 3] = t
         Rt[:3, :3] = euler_to_rot(roll, pitch, yaw)
         Rt = Rt[:3, :]
         self.rotmat = Rt[:3, :3]
-        print(self.rotmat, self.rotmat.shape)
         P = np.ones((vertices.shape[0], vertices.shape[1] + 1))
         P[:, :-1] = vertices
         P = P.T

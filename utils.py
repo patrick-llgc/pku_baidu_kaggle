@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os.path as osp
 from car_models import car_name2id, car_id2name
 import numpy as np
+import math
 from math import sin, cos
 from PIL import ImageDraw, Image
 
@@ -96,8 +97,11 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 # convert euler angle to rotation matrix
-def euler_to_rot_v2(roll, pitch, yaw):
-# def euler_to_rot(pitch, yaw, roll):
+def euler_to_rot_v2(roll, pitch, yaw, degrees=False):
+    if degrees:
+        roll, pitch, yaw = [np.deg2rad(x) for x in [roll, pitch, yaw]]
+
+    roll, pitch, yaw = pitch, yaw, roll
     Y = np.array([[np.cos(yaw), -np.sin(yaw), 0],
                   [np.sin(yaw), np.cos(yaw), 0],
                   [0, 0, 1]])
@@ -110,7 +114,10 @@ def euler_to_rot_v2(roll, pitch, yaw):
     return np.dot(Y, np.dot(P, R))
 
 # convert euler angle to rotation matrix
-def euler_to_rot(yaw, pitch, roll):
+def euler_to_rot(yaw, pitch, roll, degrees=False):
+    if degrees:
+        roll, pitch, yaw = [np.deg2rad(x) for x in [roll, pitch, yaw]]
+
     Y = np.array([[np.cos(yaw), 0, np.sin(yaw)],
                   [0, 1, 0],
                   [-np.sin(yaw), 0, np.cos(yaw)]])
