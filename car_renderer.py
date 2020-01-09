@@ -59,8 +59,7 @@ class Visualizer(object):
         print('image size is H={}, W={}'.format(H, W))
         return img
 
-    @staticmethod
-    def render_mask(yaw, pitch, roll, x, y, z, k=None,
+    def render_mask(self, yaw, pitch, roll, x, y, z, k=None,
                     overlay=False, img=None, mask_color=(0, 0, 255),
                     vertices=None, triangles=None,
                     vis_bbox=False, bbox_color=(0, 255, 0)):
@@ -97,6 +96,61 @@ class Visualizer(object):
         else:
             canvas = img  #.copy()  # sometimes it needs to have copy to work
         canvas = draw_obj(canvas, img_cor_points, triangles, color=mask_color)
+        if overlay:
+            alpha = .5
+            img = np.array(img)
+            cv2.addWeighted(canvas, alpha, img, 1 - alpha, 0, img)
+            if vis_bbox:
+                canvas = cv2.rectangle(canvas, (xmin, ymin), (xmax, ymax), bbox_color, 10)
+
+        return canvas, (xmin, ymin, xmax, ymax)
+
+    def render_mask_v2(self, yaw, pitch, roll, x, y, z, k=None,
+                    overlay=False, img=None, mask_color=(0, 0, 255),
+                    vertices=None, triangles=None,
+                    vis_bbox=False, bbox_color=(0, 255, 0)):
+
+        yaw, pitch, roll, x, y, z = [float(x) for x in [yaw, pitch, roll, x, y, z]]
+        # note the order change
+        roll, pitch, yaw = pitch, yaw, roll
+        Rt = np.eye(4)
+        t = np.array([x, y, z])
+        Rt[:3, 3] = t
+        Rt[:3, :3] = euler_to_rot(roll, pitch, yaw)
+        Rt = Rt[:3, :]
+        self.rotmat = Rt[:3, :3]
+        print(self.rotmat, self.rotmat.shape)
+        P = np.ones((vertices.shape[0], vertices.shape[1] + 1))
+        P[:, :-1] = vertices
+        P = P.T
+        img_cor_points = np.dot(k, np.dot(Rt, P))
+        img_cor_points = img_cor_points.T
+        img_cor_points[:, 0] /= img_cor_points[:, 2]
+        img_cor_points[:, 1] /= img_cor_points[:, 2]
+
+        # get amodal bbox
+        xmin, ymin = img_cor_points[:, :2].min(axis=0).astype(int)
+        xmax, ymax = img_cor_points[:, :2].max(axis=0).astype(int)
+        # NB. Do not truncate to get amodal bbox
+        # truncate bbox to image boundary
+        # H, W = img.shape[:2]
+        # xmin = max(0, xmin)
+        # ymin = max(0, ymin)
+        # xmax = min(xmax, W - 1)
+        # ymax = min(ymax, H - 1)
+
+        if not overlay:
+            canvas = np.zeros_like(img)
+        else:
+            canvas = img  # .copy()  # sometimes it needs to have copy to work
+        img_cor_points = np.expand_dims(img_cor_points[:, :2], axis=1)
+
+        # draw_obj func in apolloScape api
+        for face in triangles:
+            pts = np.array([[img_cor_points[idx, 0, 0], img_cor_points[idx, 0, 1]] for idx in face], np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.polylines(canvas, [pts], True, mask_color)
+
         if overlay:
             alpha = .5
             img = np.array(img)

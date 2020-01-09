@@ -95,6 +95,19 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
 
+# convert euler angle to rotation matrix
+def euler_to_rot_v2(roll, pitch, yaw):
+# def euler_to_rot(pitch, yaw, roll):
+    Y = np.array([[np.cos(yaw), -np.sin(yaw), 0],
+                  [np.sin(yaw), np.cos(yaw), 0],
+                  [0, 0, 1]])
+    P = np.array([[1, 0, 0],
+                  [0, np.cos(pitch), -np.sin(pitch)],
+                  [0, np.sin(pitch), np.cos(pitch)]])
+    R = np.array([[np.cos(roll), 0, np.sin(roll)],
+                  [0, 1, 0],
+                  [-np.sin(roll), 0, np.cos(roll)]])
+    return np.dot(Y, np.dot(P, R))
 
 # convert euler angle to rotation matrix
 def euler_to_rot(yaw, pitch, roll):
