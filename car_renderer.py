@@ -182,6 +182,14 @@ class Visualizer(object):
 
 
 if __name__ == '__main__':
+    """Usage
+    python car_renderer.py \ 
+    --image_dir /xmotors_ai_shared/datasets/incubator/user/yus/dataset/apollo/data/train/images \ 
+    --model_dir /xmotors_ai_shared/datasets/incubator/user/yus/dataset/apollo/data/car_models_json \ 
+    --save_dir /xmotors_ai_shared/datasets/incubator/user/yus/dataset/apollo/data/vis_kaggle_pipeline \ 
+    --anno_csv /xmotors_ai_shared/datasets/incubator/user/yus/dataset/apollo/data/train/train.csv \
+    --image_name all
+    """
     parser = argparse.ArgumentParser(description='Render car instance and convert car labelled files.')
     parser.add_argument('--image_name', default='ID_005bf2575',
                         help='image name')
@@ -204,7 +212,7 @@ if __name__ == '__main__':
                             save_dir=args.save_dir)
 
     if args.image_name.lower() == 'all':
-        image_name_list = [x[:-4] for x in os.listdir(args.iamge_dir)]
+        image_name_list = [x.split('.')[0] for x in os.listdir(args.image_dir)]
     else:
         image_name_list = [args.image_name]
     for image_name in tqdm(image_name_list):
