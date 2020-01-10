@@ -13,20 +13,14 @@ from car_models import car_id2name
 
 
 class Visualizer(object):
-    def __init__(self, basedir, image_dir, model_dir, save_dir=None, ext='.jpg'):
-        self.basedir = basedir
+    def __init__(self, image_dir, model_dir, anno_csv=None, save_dir=None, ext='.jpg'):
         self.image_dir = image_dir
         self.model_dir = model_dir
-        self.model_files = self.get_model_files()
-        self.anno_df = pd.read_csv(f'{basedir}/train.csv')
+        self.anno_df = pd.read_csv(anno_csv)
         self.avg_size_dict = get_avg_size()
         self.save_dir = save_dir
         self.ext = ext
         self.k = get_intrinsics()
-
-    def get_model_files(self):
-        model_files = glob.glob(os.path.join(self.basedir, 'car_models_json/*json'))
-        return model_files
 
     def load_model(self, car_type, type='json'):
         if type != 'json':
@@ -191,8 +185,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Render car instance and convert car labelled files.')
     parser.add_argument('--image_name', default='ID_005bf2575',
                         help='image name')
-    parser.add_argument('--base_dir', default='/Users/pliu/Downloads/pku_kaggle_data/',
-                        help='the dir of images')
+    parser.add_argument('--anno_csv', default='/Users/pliu/Downloads/pku_kaggle_data/train.csv',
+                        help='annotation csv')
     parser.add_argument('--image_dir', default='/Users/pliu/Downloads/pku_kaggle_data/train_images',
                         help='the dir of images')
     parser.add_argument('--model_dir', default='/Users/pliu/Downloads/pku_kaggle_data/car_models_json',
@@ -204,8 +198,10 @@ if __name__ == '__main__':
 
     # args.save_dir = None  # show in terminal or notebook
 
-    visualizer = Visualizer(basedir=args.base_dir, image_dir=args.image_dir,
-                     model_dir=args.model_dir, save_dir=args.save_dir)
+    visualizer = Visualizer(image_dir=args.image_dir,
+                            model_dir=args.model_dir,
+                            anno_csv=args.anno_csv,
+                            save_dir=args.save_dir)
 
     if args.image_name.lower() == 'all':
         image_name_list = [x[:-4] for x in os.listdir(args.iamge_dir)]
