@@ -57,7 +57,8 @@ class Visualizer(object):
         print('image size is H={}, W={}'.format(H, W))
         return img
 
-    def render_mask(self, yaw, pitch, roll, x, y, z, k=None,
+    @staticmethod
+    def render_mask(yaw, pitch, roll, x, y, z, k=None,
                     overlay=False, img=None, mask_color=(0, 0, 255),
                     vertices=None, triangles=None,
                     vis_bbox=False, bbox_color=(0, 255, 0)):
@@ -103,7 +104,8 @@ class Visualizer(object):
 
         return canvas, (xmin, ymin, xmax, ymax)
 
-    def render_mask_v2(self, yaw, pitch, roll, x, y, z, k=None,
+    @staticmethod
+    def render_mask_v2(yaw, pitch, roll, x, y, z, k=None,
                     overlay=False, img=None, mask_color=(0, 0, 255),
                     vertices=None, triangles=None,
                     vis_bbox=False, bbox_color=(0, 255, 0)):
@@ -115,7 +117,7 @@ class Visualizer(object):
         Rt[:3, 3] = t
         Rt[:3, :3] = euler_to_rot(roll, pitch, yaw)
         Rt = Rt[:3, :]
-        self.rotmat = Rt[:3, :3]
+        rotmat = Rt[:3, :3]
         P = np.ones((vertices.shape[0], vertices.shape[1] + 1))
         P[:, :-1] = vertices
         P = P.T
