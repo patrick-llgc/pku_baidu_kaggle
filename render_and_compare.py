@@ -99,7 +99,7 @@ def draw_obj(image, vertices, triangles, color=(0,0,255)):
     return image
 
 # Load a 3D model of a car
-def load_model_files(car_type):
+def load_model_files(car_type, basedir=None):
     model_file = f'{basedir}/car_models_json/{car_type}.json'
     with open(model_file) as json_file:
         data = json.load(json_file)
