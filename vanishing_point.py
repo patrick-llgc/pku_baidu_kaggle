@@ -137,6 +137,8 @@ class VanishingPoint(object):
         sample_key = list(self.data_dict.keys())[0]
         image_shape = plt.imread(self.data_dict[sample_key]['image']).shape[:2]
         self.height, self.width = (np.array(image_shape) * self.image_scale).astype(int)
+        self.box_list_all = []
+        self.box_list_all_valid = []
 
     @staticmethod
     def load_data(basedir):
@@ -163,10 +165,29 @@ class VanishingPoint(object):
             plt.title('vanishing point at y={}'.format(peak_loc_gaussian))
         return peak_loc_gaussian
 
+    def visual_check(self, y_vp=0, inject_y_list=[]):
+        """Visual check after process
+
+        Args:
+            inject_y_list: when not empty, display them as well
+
+        Returns:
+
+        """
+        for key in sorted(list(self.data_dict.keys()))[:]:
+            image_file = self.data_dict[key]['image']
+            img = plt.imread(image_file)[..., :3]
+            img = cv2.resize(img, (0, 0), fx=2, fy=2)
+            img = cv2.line(img, (0, y_vp), (self.width - 1, y_vp), color=(0, 255, 0), thickness=10)
+            for y in inject_y_list:
+                img = cv2.line(img, (0, y), (self.width-1, y_vp), color=(0, 255, 0), thickness=10)
+            plt.figure()
+            plt.imshow(img)
+            loc_key = os.path.basename(self.basedir)
+            plt.title(loc_key + ': ' + key)
+
     def process(self):
         vp_dict = {}
-        box_list_all = []
-        box_list_all_valid = []
         for key in sorted(list(self.data_dict.keys()))[:]:
             data = read_json(self.data_dict[key]['json'])
             if isinstance(data, dict):
@@ -183,25 +204,27 @@ class VanishingPoint(object):
                 print(key)
                 continue
             box_list = filter_box_list(box_list)
-            box_list_all.append(box_list)
+            self.box_list_all.append(box_list)
             if len(box_list) < 4:
                 continue
-            box_list_all_valid.append(box_list)
+            self.box_list_all_valid.append(box_list)
 
             occ_gaussian, peak_loc_gaussian = get_profile(self.height, box_list, type='skewed_gaussian')
             vp_dict[key] = peak_loc_gaussian
         # for all images
-        box_list_all_flat = [y for x in box_list_all for y in x]  # flatten
-        occ_gaussian, peak_loc_gaussian = get_profile(self.height, box_list_all_flat, type='skewed_gaussian')
+        self.box_list_all_flat = [y for x in self.box_list_all for y in x]  # flatten
+        occ_gaussian, peak_loc_gaussian = get_profile(
+            self.height, self.box_list_all_flat, type='skewed_gaussian')
         vp_dict['all'] = peak_loc_gaussian
         return vp_dict
 
 
-def dump_dict(db_dict):
+def dump_dict(db_dict, save_dir=None):
     """
 
     Args:
         db_dict: the dictionary containing one vanishing point per car-city-time
+        savedir: if None, do not save
 
     Returns:
 
@@ -213,12 +236,21 @@ def dump_dict(db_dict):
         v0, v1, v2 = k.split('-')
         new_k = '-'.join([v0, v2, v1])
         new_db_dict[new_k] = int(db_dict[k])
+    if save_dir:
+        write_json(db_dict, os.path.join(save_dir, 'car-city-time.json'))
+        write_json(new_db_dict, os.path.join(save_dir, 'car-time-city.json'))
 
-    write_json(db_dict, 'car-city-time.json')
-    write_json(new_db_dict, 'car-time-city.json')
 
+def batch_find_vp(datadir, save_dir=None):
+    """
 
-def batch_find(datadir):
+    Args:
+        datadir: contains a list of dir, each dir in the format of car-city-time
+        save_dir: if not None, save to save_dir
+
+    Returns:
+
+    """
     basedir_list = glob.glob(os.path.join(datadir, '*'))
     vp_dict_all = {}
     for basedir in tqdm(basedir_list[:]):
@@ -228,7 +260,7 @@ def batch_find(datadir):
         # collect all
         loc_key = os.path.basename(basedir)
         vp_dict_all[loc_key] = vp_dict_per_image['all']
-    dump_dict(vp_dict_all)
+    dump_dict(vp_dict_all, save_dir=save_dir)
     return vp_dict_all
 
 
@@ -239,5 +271,5 @@ if __name__ == '__main__':
     # print(vp_dict)
 
     datadir = '/Users/pliu/Downloads/sample_img_and_label/'
-    vp_dict_all = batch_find(datadir)
+    vp_dict_all = batch_find_vp(datadir)
     print(vp_dict_all)
