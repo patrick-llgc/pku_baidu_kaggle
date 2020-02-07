@@ -26,7 +26,7 @@ def make_kernel(ymin, ymax, n=948, type='box'):
     return occ_t
 
 
-def get_profile(height, box_list, type='gaussian'):
+def get_profile(height, box_list, type='skewed_gaussian'):
     occ = np.zeros(height)
     for box in box_list:
         ymin, ymax = int(box[0]), int(box[2])
@@ -42,6 +42,12 @@ def read_json(json_file):
     with open(json_file, 'r') as f_in:
         data = json.load(f_in)
     return data
+
+
+def write_json(data, json_file):
+    with open(json_file, 'w') as f_out:
+        data = json.dump(data, f_out, sort_keys=True, indent=4)
+
 
 
 def poly2box(poly):
@@ -62,7 +68,7 @@ def get_bbox_on_canvas(img, box_list, color=(255, 255, 0), use_empty_canvas=True
         canvas = img
     for box in box_list:
         canvas = cv2.rectangle(
-            canvas, (int(box[1]), int(box[0])), (int(box[3]), int(box[2])), color, 4)
+            canvas, (int(box[1]), int(box[0])), (int(box[3]), int(box[2])), color, 10)
     return canvas
 
 
@@ -78,27 +84,45 @@ def filter_box_list(box_list, ignore_small=50):
     return new_box_list
 
 
-def visualize_image(image_file, box_list, image_scale=2):
+def visualize_image(image_file, box_list, image_scale=2, y_vp=None,
+                    vp_color=(0, 255, 0), box_color=(255, 255, 0)):
+    """
+
+    Args:
+        image_file:
+        box_list:
+        image_scale:
+        y_vp: y coordinate of the vanishing point/line
+
+    Returns:
+
+    """
     img = plt.imread(image_file)
     img = cv2.resize(img, (0, 0), fx=image_scale, fy=image_scale)
     if len(img.shape) == 3 and img.shape[2] > 3:
         img = img[..., :3]
+    if y_vp is not None:
+        width = img.shape[1]
+        img = cv2.line(img, (0, y_vp), (width - 1, y_vp), color=vp_color, thickness=10)
     plt.figure()
     plt.imshow(img)
 
-    canvas = get_bbox_on_canvas(img, box_list)
+    img = get_bbox_on_canvas(img, box_list, color=box_color)
+    if y_vp is not None:
+        img = cv2.line(img, (0, y_vp), (width - 1, y_vp), color=vp_color, thickness=10)
     plt.figure()
-    plt.imshow(canvas)
+    plt.imshow(img)
 
 
 def visualize_profile(height, box_list):
-    occ_gaussian, peak_loc_gaussian = get_profile(height, box_list, type='gaussian')
+    occ_gaussian, peak_loc_gaussian = get_profile(height, box_list, type='skewed_gaussian')
     occ_box, peak_loc_box = get_profile(height, box_list, type='box')
     plt.plot(occ_box, label='box')
-    plt.plot(occ_gaussian, label='gaussian')
+    plt.plot(occ_gaussian, label='skewed_gaussian')
     plt.legend()
-    # plt.xlim([200, 270])
     plt.title('vanishing point at y={}'.format(peak_loc_gaussian))
+    print('box', peak_loc_box, 'gauss', peak_loc_gaussian)
+    return peak_loc_gaussian
 
 
 class VanishingPoint(object):
@@ -125,11 +149,11 @@ class VanishingPoint(object):
         return data_dict
 
     def find_vanishing_line(self):
-        occ_gaussian, peak_loc_gaussian = get_profile(self.height, self.box_list, type='gaussian')
+        occ_gaussian, peak_loc_gaussian = get_profile(self.height, self.box_list, type='skewed_gaussian')
         occ_box, peak_loc_box = get_profile(self.height, self.box_list, type='box')
         if self.visualize_vp:
             plt.plot(occ_box, label='box')
-            plt.plot(occ_gaussian, label='gaussian')
+            plt.plot(occ_gaussian, label='skewed_gaussian')
             plt.legend()
             plt.title('vanishing point at y={}'.format(peak_loc_gaussian))
         return peak_loc_gaussian
@@ -147,7 +171,7 @@ class VanishingPoint(object):
                 raise TypeError
             self.image_file = self.data_dict[key]['image']
             # do NOT use truncated bbox
-            self.box_list = [poly2box(x['poly']) for x in data if not x['MOC']['cropped']]
+            self.box_list = [poly2box(x['poly']) for x in data if not x['MOC']['cropped'] and x['poly']]
             self.box_list = filter_box_list(self.box_list)
             if len(self.box_list) < 8:
                 continue
