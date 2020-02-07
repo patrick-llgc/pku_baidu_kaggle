@@ -3,6 +3,7 @@ import json
 import glob
 import os
 import cv2
+from tqdm import tqdm
 import matplotlib.pylab as plt
 
 
@@ -63,7 +64,8 @@ def poly2box(poly):
 
 def get_bbox_on_canvas(img, box_list, color=(255, 255, 0), use_empty_canvas=True):
     if use_empty_canvas:
-        canvas = np.zeros_like(img)
+        height, width = img.shape[:2]
+        canvas = np.zeros((height, width, 3), dtype=np.uint8)
     else:
         canvas = img
     for box in box_list:
@@ -97,12 +99,12 @@ def visualize_image(image_file, box_list, image_scale=2, y_vp=None,
     Returns:
 
     """
-    img = plt.imread(image_file)
+    img = plt.imread(image_file, -1)
     img = cv2.resize(img, (0, 0), fx=image_scale, fy=image_scale)
+    width = img.shape[1]
     if len(img.shape) == 3 and img.shape[2] > 3:
-        img = img[..., :3]
+        img = img[..., :3].astype(np.uint8)
     if y_vp is not None:
-        width = img.shape[1]
         img = cv2.line(img, (0, y_vp), (width - 1, y_vp), color=vp_color, thickness=10)
     plt.figure()
     plt.imshow(img)
@@ -146,9 +148,12 @@ class VanishingPoint(object):
         json_dict = {key_fn(x): x for x in json_files}
         common_keys = list(set(image_dict.keys()) & set(json_dict.keys()))
         data_dict = {x: {'image': image_dict[x], 'json': json_dict[x]} for x in common_keys}
+        is_data_enough = (len(data_dict) >= 20)
+        if not is_data_enough:
+            print('{} has only {} images'.format(os.path.basename(basedir), len(data_dict)))
         return data_dict
 
-    def find_vanishing_line(self):
+    def find_vanishing_line_per_image(self):
         occ_gaussian, peak_loc_gaussian = get_profile(self.height, self.box_list, type='skewed_gaussian')
         occ_box, peak_loc_box = get_profile(self.height, self.box_list, type='box')
         if self.visualize_vp:
@@ -159,8 +164,9 @@ class VanishingPoint(object):
         return peak_loc_gaussian
 
     def process(self):
-        print('processing', len(self.data_dict))
         vp_dict = {}
+        box_list_all = []
+        box_list_all_valid = []
         for key in sorted(list(self.data_dict.keys()))[:]:
             data = read_json(self.data_dict[key]['json'])
             if isinstance(data, dict):
@@ -169,19 +175,69 @@ class VanishingPoint(object):
                 data = data
             else:
                 raise TypeError
-            self.image_file = self.data_dict[key]['image']
+            image_file = self.data_dict[key]['image']
             # do NOT use truncated bbox
-            self.box_list = [poly2box(x['poly']) for x in data if not x['MOC']['cropped'] and x['poly']]
-            self.box_list = filter_box_list(self.box_list)
-            if len(self.box_list) < 8:
+            try:
+                box_list = [poly2box(x['poly']) for x in data if (not x['MOC']['cropped'] and x['poly'])]
+            except:
+                print(key)
                 continue
-            peak_loc_gaussian = self.find_vanishing_line()
+            box_list = filter_box_list(box_list)
+            box_list_all.append(box_list)
+            if len(box_list) < 4:
+                continue
+            box_list_all_valid.append(box_list)
+
+            occ_gaussian, peak_loc_gaussian = get_profile(self.height, box_list, type='skewed_gaussian')
             vp_dict[key] = peak_loc_gaussian
-        print('found', len(vp_dict))
+        # for all images
+        box_list_all_flat = [y for x in box_list_all for y in x]  # flatten
+        occ_gaussian, peak_loc_gaussian = get_profile(self.height, box_list_all_flat, type='skewed_gaussian')
+        vp_dict['all'] = peak_loc_gaussian
+        return vp_dict
+
+
+def dump_dict(db_dict):
+    """
+
+    Args:
+        db_dict: the dictionary containing one vanishing point per car-city-time
+
+    Returns:
+
+    """
+    db_dict = {k: int(v) for k, v in db_dict.items()}
+    # flip loc and time: from car-city-time to car-time-city
+    new_db_dict = {}
+    for k in db_dict.keys():
+        v0, v1, v2 = k.split('-')
+        new_k = '-'.join([v0, v2, v1])
+        new_db_dict[new_k] = int(db_dict[k])
+
+    write_json(db_dict, 'car-city-time.json')
+    write_json(new_db_dict, 'car-time-city.json')
+
+
+def batch_find(datadir):
+    basedir_list = glob.glob(os.path.join(datadir, '*'))
+    vp_dict_all = {}
+    for basedir in tqdm(basedir_list[:]):
+        vp = VanishingPoint(basedir=basedir, visualize_img=False, visualize_vp=False)
+        vp_dict_per_image = vp.process()
+
+        # collect all
+        loc_key = os.path.basename(basedir)
+        vp_dict_all[loc_key] = vp_dict_per_image['all']
+    dump_dict(vp_dict_all)
+    return vp_dict_all
 
 
 if __name__ == '__main__':
     basedir = '/Users/pliu/Downloads/random_300_images/'
-
     vp = VanishingPoint(basedir=basedir, visualize_img=False, visualize_vp=False)
-    vp.process()
+    vp_dict = vp.process()
+    # print(vp_dict)
+
+    datadir = '/Users/pliu/Downloads/sample_img_and_label/'
+    vp_dict_all = batch_find(datadir)
+    print(vp_dict_all)
